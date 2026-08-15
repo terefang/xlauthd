@@ -538,19 +538,6 @@ scott:$2b$12$...
 After saving the file, xlauthd will detect the updated password file during 
 its normal hot-reload cycle, so no daemon restart is required.
 
-### SECURITY
-
-Use `-prompt` whenever possible. Avoid passing production passwords through 
-`-password`, shell scripts, environment variables, or command-line arguments.
-
-The htpasswd file contains password verifiers and should be protected accordingly:
-
-```sh
-chmod 0600 /etc/xlauthd/users.htpasswd
-```
-
-The password itself should never be stored in the file; only the generated hash should be present.
-
 ## CONFIGURING TLS
 
 xlauthd can provide TLS-secured connections by configuring a certificate and private key:
