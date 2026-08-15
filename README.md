@@ -192,25 +192,7 @@ ldap://server.example.com:5389
 
 ## LDAP SEARCH
 
-LDAP search support is intentionally limited.
-
-xlauthd does not attempt to expose an arbitrary directory tree. Search operations 
-are implemented only where necessary to support the authentication and identity 
-model provided by the daemon.
-
-Clients should not expect xlauthd to behave like OpenLDAP, 389 Directory Server, 
-Active Directory, or another full LDAP directory implementation.
-
-In particular, xlauthd does not provide:
-
-* Arbitrary directory modification
-* LDAP object creation
-* LDAP object deletion
-* Directory replication
-* Schema administration
-* Directory indexing
-* LDAP ACL management
-* General-purpose directory storage
+TBD.
 
 ## SECURITY
 
