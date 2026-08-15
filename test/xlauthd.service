@@ -1,0 +1,15 @@
+[Unit]
+Description=xlauthd lightweight LDAP authentication daemon
+After=network.target
+
+[Service]
+Type=simple
+User=xlauthd
+Group=xlauthd
+ExecStart=/usr/local/bin/xlauthd server -config /etc/xlauthd/xlauthd.conf
+Restart=on-failure
+TimeoutStopSec=5s
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
