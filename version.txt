@@ -2,5 +2,5 @@
   ./version.txt -- Version Information for xlauthd (syntax: Text)
   [automatically generated and maintained by GNU shtool]
 
-  This is xlauthd, Version 2026.08.3 (16-Aug-2026)
+  This is xlauthd, Version 2026.08.4 (18-Aug-2026)
 
