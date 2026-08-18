@@ -192,7 +192,163 @@ ldap://server.example.com:5389
 
 ## LDAP SEARCH
 
-TBD.
+### LDAP USER OBJECT MAPPING
+
+xlauthd exposes users from the htpasswd user and role files as lightweight LDAP user objects. 
+Users are presented beneath the `ou=users` organizational unit of the configured base DN.
+
+A user's LDAP distinguished name (DN) is constructed as:
+
+```text
+uid=USERNAME,ou=users,BASEDN
+```
+
+For example, with a base DN of `dc=example` and a username of `aureliusblackthorn`, the resulting DN is:
+
+```text
+uid=aureliusblackthorn,ou=users,dc=example
+```
+
+Each user object uses the LDAP `uidObject` object class. The username is exposed through 
+the `uid` attribute.
+
+Roles assigned to the user in the htpasswd-style role file are exposed through the LDAP 
+`memberOf` attribute. Each role is represented as a DN beneath the `ou=roles` tree:
+
+```text
+cn=ROLE,ou=roles,BASEDN
+```
+
+For example, a user is exposed as:
+
+```text
+DN: uid=aureliusblackthorn,ou=users,dc=example
+    objectClass: top
+    objectClass: uidObject
+
+    uid: AureliusBlackthorn
+
+    memberOf: cn=COUNT,ou=roles,dc=example
+    memberOf: cn=FROZEN,ou=roles,dc=example
+    memberOf: cn=RAVEN,ou=roles,dc=example
+```
+
+### LDAP ROLE OBJECT MAPPING
+
+xlauthd exposes roles from the htpasswd-style file as lightweight LDAP role objects. 
+Roles are presented beneath the `ou=roles` organizational unit of the configured base DN.
+
+A role's LDAP distinguished name (DN) is constructed as:
+
+```text
+cn=ROLE,ou=roles,BASEDN
+```
+
+For example, with a base DN of `dc=example` and a role named `RED`, the resulting DN is:
+
+```text
+cn=RED,ou=roles,dc=example
+```
+
+Each role object uses the LDAP `cnObject` object class. The role name is exposed through 
+the `cn` attribute.
+
+Users assigned to the role are exposed through the LDAP `uniqueMember` attribute. 
+Each member is represented by the DN of the corresponding user beneath the `ou=users` tree:
+
+```text
+uid=USERNAME,ou=users,BASEDN
+```
+
+For example, a role containing four users is exposed as:
+
+```text
+DN: cn=RED,ou=roles,dc=example
+    objectClass: top
+    objectClass: cnObject
+
+    cn: RED
+
+    uniqueMember: uid=mistressblackfang,ou=users,dc=example
+    uniqueMember: uid=aureliusnoir,ou=users,dc=example
+    uniqueMember: uid=viktorharrow,ou=users,dc=example
+    uniqueMember: uid=severindravendohna,ou=users,dc=example
+```
+
+The relationship between users and roles is therefore represented in both directions:
+
+* **User → roles:** `memberOf`
+* **Role → users:** `uniqueMember`
+
+### LDAP GROUP OBJECT MAPPING
+
+xlauthd exposes groups from a separate **htgroup** file as lightweight LDAP group objects. 
+Groups are presented beneath the `ou=groups` organizational unit of the configured base DN.
+
+A group's LDAP distinguished name (DN) is constructed as:
+
+```text
+cn=GROUP,ou=groups,BASEDN
+```
+
+For example, with a base DN of `dc=example` and a group named `HIDDEN`, the resulting DN is:
+
+```text
+cn=HIDDEN,ou=groups,dc=example
+```
+
+Each group object uses the LDAP `cnObject` object class. The group name is exposed through 
+the `cn` attribute.
+
+Users assigned to a group in the **htgroup** file are exposed through the LDAP 
+`uniqueMember` attribute. Each member is represented by the DN of the corresponding user 
+beneath the `ou=users` tree.
+
+For example:
+
+```text
+DN: cn=HIDDEN,ou=groups,dc=example
+    objectClass: top
+    objectClass: cnObject
+
+    cn: HIDDEN
+
+    uniqueMember: uid=professorironclaw,ou=users,dc=example
+    uniqueMember: uid=lucienumbra,ou=users,dc=example
+    uniqueMember: uid=archessdray,ou=users,dc=example
+    uniqueMember: uid=arissadelacroix,ou=users,dc=example
+```
+
+#### GROUPS ARE SEPARATE FROM ROLES
+
+Group membership is maintained independently in the **htgroup** file. Unlike roles, group 
+assignments **are not reflected in the user's `memberOf` attribute**.
+
+The LDAP mapping is therefore:
+
+```text
+htgroup
+   |
+   v
+ou=groups,BASEDN
+   |
+   +-- cn=GROUP,ou=groups,BASEDN
+           |
+           +-- uniqueMember: uid=USER,ou=users,BASEDN
+```
+
+By contrast, roles are also exposed through the user's `memberOf` attribute.
+
+This distinction is intentional:
+
+* **Roles** are defined by the role file and are mapped to both role objects and 
+    the user's `memberOf` attributes.
+* **Groups** are defined exclusively by the htgroup file and are mapped only beneath 
+    the `ou=groups` subtree.
+* Group membership does **not** add `memberOf` attributes to user objects.
+
+This allows applications to distinguish between **roles assigned to a user** and 
+**group memberships** without mixing the two concepts.
 
 ## SECURITY
 

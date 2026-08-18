@@ -9,7 +9,7 @@ import (
 	ldap "github.com/vjeantet/ldapserver"
 )
 
-func (xl *XlauthServerMain) HandleSearchRoleBase(w ldap.ResponseWriter, m *ldap.Message) {
+func (xl *XlauthServerMain) HandleSearchGroupBase(w ldap.ResponseWriter, m *ldap.Message) {
 	xl.Synchronized.Lock()
 	defer xl.Synchronized.Unlock()
 	if !xl.IsBound {
@@ -23,10 +23,10 @@ func (xl *XlauthServerMain) HandleSearchRoleBase(w ldap.ResponseWriter, m *ldap.
 
 	r := m.GetSearchRequest()
 	if r.Scope() == ldap.SearchRequestScopeBaseObject {
-		xl.LogInfo(m, "search/get request to %s,%s", RoleOU, xl.BaseDN)
-		e := ldap.NewSearchResultEntry(RoleOU + "," + xl.BaseDN)
+		xl.LogInfo(m, "search/get request to %s,%s", GroupOU, xl.BaseDN)
+		e := ldap.NewSearchResultEntry(GroupOU + "," + xl.BaseDN)
 		e.AddAttribute("objectClass", "top", "organizationalUnit")
-		e.AddAttribute("ou", RoleRDN)
+		e.AddAttribute("ou", GroupRDN)
 		w.Write(e)
 		res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 		w.Write(res)
@@ -34,9 +34,9 @@ func (xl *XlauthServerMain) HandleSearchRoleBase(w ldap.ResponseWriter, m *ldap.
 	}
 	_filter := r.FilterString()
 	_ifilter := strings.ToLower(_filter)
-	xl.LogInfo(m, "search request to %s,%s with filter %s", RoleOU, xl.BaseDN, _filter)
+	xl.LogInfo(m, "search request to %s,%s with filter %s", GroupOU, xl.BaseDN, _filter)
 	if _ifilter == "(objectclass=*)" {
-		xl.StreamAllRoles(w)
+		xl.StreamAllGroups(w)
 		res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 		w.Write(res)
 		return
@@ -48,20 +48,20 @@ func (xl *XlauthServerMain) HandleSearchRoleBase(w ldap.ResponseWriter, m *ldap.
 		if ofs > 0 {
 			rid = rid[:ofs]
 			if rid == "*" {
-				xl.StreamAllRoles(w)
+				xl.StreamAllGroups(w)
 				res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 				w.Write(res)
 				return
 			}
-			_, ok := xl.RoleAccounts[rid]
+			_, ok := xl.GroupAccounts[rid]
 			if ok {
-				xl.StreamRole(w, rid)
+				xl.StreamGroup(w, rid)
 				res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 				w.Write(res)
 				return
 			}
 
-			if xl.StreamMatchedRoles(w, rid) > 0 {
+			if xl.StreamMatchedGroups(w, rid) > 0 {
 				res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
 				w.Write(res)
 				return
@@ -74,22 +74,22 @@ func (xl *XlauthServerMain) HandleSearchRoleBase(w ldap.ResponseWriter, m *ldap.
 		ofs = xstrings.IndexOf(uid, ")", 0)
 		if ofs > 0 {
 			uid = uid[:ofs]
-			if uid == "*" {
-				xl.StreamAllRoles(w)
-				res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
-				w.Write(res)
-				return
-			}
-			ofs = xstrings.IndexOf(uid, ",", 0)
-			if ofs > 0 {
-				uid = uid[:ofs]
-			}
-			uid = strings.ToLower(uid)
-			if xl.StreamMatchedRolesByUser(w, uid) > 0 {
-				res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
-				w.Write(res)
-				return
-			}
+		}
+		if uid == "*" {
+			xl.StreamAllGroups(w)
+			res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
+			w.Write(res)
+			return
+		}
+		ofs = xstrings.IndexOf(uid, ",", 0)
+		if ofs > 0 {
+			uid = uid[:ofs]
+		}
+		uid = strings.ToLower(uid)
+		if xl.StreamMatchedGroupsByUser(w, uid) > 0 {
+			res := ldap.NewSearchResultDoneResponse(ldap.LDAPResultSuccess)
+			w.Write(res)
+			return
 		}
 	}
 
@@ -97,53 +97,49 @@ func (xl *XlauthServerMain) HandleSearchRoleBase(w ldap.ResponseWriter, m *ldap.
 	w.Write(res)
 }
 
-func (xl *XlauthServerMain) StreamMatchedRolesByUser(w ldap.ResponseWriter, uid string) int {
+func (xl *XlauthServerMain) StreamAllGroups(w ldap.ResponseWriter) {
+	for rid, _ := range xl.GroupAccounts {
+		xl.StreamGroup(w, rid)
+	}
+}
+
+func (xl *XlauthServerMain) StreamMatchedGroupsByUser(w ldap.ResponseWriter, uid string) int {
 	_ret := 0
 	uid = strings.ReplaceAll(uid, "*", "")
-	roles, err := xmatch.MatchSimpleContainsVforK(xl.RoleAccounts, uid)
+	roles, err := xmatch.MatchSimpleContainsVforK(xl.GroupAccounts, uid)
 	if err == nil {
 		for _, role := range roles {
-			xl.StreamRole(w, role)
+			xl.StreamGroup(w, role)
 			_ret++
 		}
 	}
 	return _ret
 }
 
-func (xl *XlauthServerMain) StreamAllRoles(w ldap.ResponseWriter) {
-	for rid, _ := range xl.RoleAccounts {
-		xl.StreamRole(w, rid)
-	}
-}
-
-func (xl *XlauthServerMain) StreamMatchedRoles(w ldap.ResponseWriter, match string) int {
+func (xl *XlauthServerMain) StreamMatchedGroups(w ldap.ResponseWriter, match string) int {
 	_ret := 0
 	match = strings.ReplaceAll(match, "*", "")
-	for rid, _ := range xl.RoleAccounts {
+	for rid, _ := range xl.GroupAccounts {
 		if match == "" {
-			xl.StreamRole(w, rid)
+			xl.StreamGroup(w, rid)
 			_ret++
 		} else if strings.Contains(strings.ToLower(rid), strings.ToLower(match)) {
-			xl.StreamRole(w, rid)
+			xl.StreamGroup(w, rid)
 			_ret++
 		}
 	}
 	return _ret
 }
 
-func (xl *XlauthServerMain) StreamRole(w ldap.ResponseWriter, rid string) bool {
-	rid = strings.ToUpper(rid)
-	crid, ok := xl.Roles[rid]
+func (xl *XlauthServerMain) StreamGroup(w ldap.ResponseWriter, rid string) bool {
+	rid = strings.ToLower(rid)
+	_uids, ok := xl.GroupAccounts[rid]
 	if !ok {
 		return false
 	}
-	_uids, ok := xl.RoleAccounts[crid]
-	if !ok {
-		return false
-	}
-	e := ldap.NewSearchResultEntry(xl.MakeRoleDn(rid))
+	e := ldap.NewSearchResultEntry(xl.MakeGroupDn(rid))
 	e.AddAttribute("objectClass", "top", "cnObject")
-	e.AddAttribute("cn", message.AttributeValue(rid))
+	e.AddAttribute("cn", message.AttributeValue(strings.ToUpper(rid)))
 	_rav := make([]message.AttributeValue, 0)
 	for _, _uid := range _uids {
 		_rav = append(_rav, message.AttributeValue(xl.MakeUserDn(_uid)))

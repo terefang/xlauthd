@@ -57,6 +57,7 @@ type SvcCommand struct {
 	BaseDN   string `ini:"basedn"`
 	UserDB   string `ini:"userdb"`
 	SystemDB string `ini:"systemdb"`
+	GroupDB  string `ini:"groupdb"`
 	TlsCert  string `ini:"tlscert"`
 	TlsKey   string `ini:"tlskey"`
 	Verbose  bool   `ini:"verbose"`
@@ -68,6 +69,7 @@ func (r *SvcCommand) Arguments(f *flag.FlagSet) {
 	f.StringVar(&r.Listen, "listen", "127.0.0.1:5389", "listen address and port")
 	f.StringVar(&r.BaseDN, "basedn", "dc=eample,dc=net", "path prefix")
 	f.StringVar(&r.UserDB, "userdb", "", "user password file (.htpasswd style)")
+	f.StringVar(&r.GroupDB, "groupdb", "", "group file (.htgroup style)")
 	f.StringVar(&r.SystemDB, "systemdb", "", "system password file (.htpasswd style)")
 	f.StringVar(&r.TlsCert, "tlscert", "", "tls certificate (.pem)")
 	f.StringVar(&r.TlsKey, "tlskey", "", "tls key (.pem)")
@@ -95,6 +97,7 @@ func (r *SvcCommand) Execute(args []string) int {
 
 	svc.SystemAccountHtpasswd = r.SystemDB
 	svc.AccountHtpasswd = r.UserDB
+	svc.GroupHtgroup = r.GroupDB
 	svc.BaseDN = r.BaseDN
 	svc.IsVerbose = r.Verbose
 	svc.SyslogAddress = r.Syslog
@@ -105,11 +108,15 @@ func (r *SvcCommand) Execute(args []string) int {
 	log.Println("setting basedn", svc.BaseDN)
 	log.Println("setting userdn", server.UserOU, svc.BaseDN)
 	log.Println("setting roledn", server.RoleOU, svc.BaseDN)
+	log.Println("setting groupdn", server.GroupOU, svc.BaseDN)
 	//Create a new LDAP Server
 	server := ldap.NewServerWithHandlerSource(svc)
 
+	if r.Verbose {
+		log.Println("start listen on", r.Listen)
+	}
 	if r.TlsCert != "" && r.TlsKey != "" {
-		//SSL
+		//SSL/TLS
 		if r.Verbose {
 			log.Println("enabled tls")
 		}
@@ -117,14 +124,8 @@ func (r *SvcCommand) Execute(args []string) int {
 			config, _ := r.GetTLSconfig()
 			s.Listener = tls.NewListener(s.Listener, config)
 		}
-		if r.Verbose {
-			log.Println("start listen on", r.Listen)
-		}
 		go server.ListenAndServe(r.Listen, secureConn)
 	} else {
-		if r.Verbose {
-			log.Println("start listen on", r.Listen)
-		}
 		go server.ListenAndServe(r.Listen)
 	}
 

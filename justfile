@@ -84,7 +84,7 @@ make-rel-msg _MSG: set-drel git-push
 make-upload:
     #!/bin/bash
     VERSION=$(shtool version -l txt ./version.txt)
-    gh release upload v$VERSION {{XDIST}}/*
+    gh release upload v$VERSION {{XDIST}}/{{EXE}}-*
 
 make-prel-full _MSG: (make-prel-msg _MSG) build-all make-upload
 make-rel-full _MSG: (make-rel-msg _MSG) build-all make-upload
